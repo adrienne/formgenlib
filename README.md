@@ -1,7 +1,7 @@
 #Form Generation Library
 
 ##Usage
-Load the spark like this: $this->load->spark('formgenlib/2.0.1');
+Load the spark like this: $this->load->spark('formgenlib/2.0.2');
 
 Use the spark like this: $this->form->...
 

@@ -15,8 +15,8 @@
  * @email		info@frankmichel.com
  * 
  * @file		Form.php
- * @version		2.0.0
- * @date		11/25/2011
+ * @version		2.0.2
+ * @date		06/25/2012
  * 
  * Copyright (c) 2009 Frank Michel
  *
@@ -95,11 +95,11 @@ class El {
 	var $_valid_atts = array(
 		'label' 	=> 'accesskey|onblur|onfocus|class|style|title|dir|lang', // 'for' not included, supplied with form helper function
 		'form' 		=> 'action|accept|accept-charset|enctype|method|name|onreset|onsubmit|target',
-		'input' 	=> 'accept|accesskey|align|alt|checked|disabled|ismap|maxlength|name|onblur|onchange|onfocus|onselect|readonly|size|src|tabindex|type|usemap|value',
+		'input' 	=> 'accept|accesskey|align|alt|checked|disabled|ismap|maxlength|name|onblur|onchange|onfocus|onselect|readonly|size|src|tabindex|type|usemap|value|autocomplete|placeholder',
 		'select' 	=> 'disabled|multiple|onblur|onchange|onfocus|size|tabindex', // 'name' not included, supplied with form helper function
-		'textarea'	=> 'cols|rows|accesskey|disabled|name|onblur|onchange|onfocus|onselect|readonly|tabindex',
+		'textarea'	=> 'cols|rows|accesskey|disabled|name|onblur|onchange|onfocus|onselect|readonly|tabindex|placeholder',
 		'button' 	=> 'accesskey|disabled|name|onblur|onfocus|tabindex|type|value|content', // 'content' added, supplied with form helper function
-		'*' 		=> 'class|id|style|title|dir|lang|onclick|ondblclick|onmousedown|onmouseup|onmouseover|onmousemove|onmouseout|onkeypress|onkeydown|onkeyup|rel|data-value'
+		'*' 		=> 'class|id|style|title|dir|lang|onclick|ondblclick|onmousedown|onmouseup|onmouseover|onmousemove|onmouseout|onkeypress|onkeydown|onkeyup|rel'
 	);
 
 	var $error;	// full error with open/close	
@@ -406,7 +406,7 @@ class El {
 		$filtered = array();
 		foreach ($atts as $key=>$value) 
 		{
-			if ((array_key_exists($tag, $this->_valid_atts) && strstr($this->_valid_atts[$tag], $key) ) || in_array($key, explode('|', $this->_valid_atts['*'])))
+			if ((array_key_exists($tag, $this->_valid_atts) && strstr($this->_valid_atts[$tag], $key) ) || in_array($key, explode('|', $this->_valid_atts['*'])) || substr($key, 0, 5) == 'data-')
 			{
 				$filtered[$key] = $value;
 			}
@@ -591,7 +591,8 @@ class El {
 
 	function label() 
 	{
-		return $this->_make_label();
+		$el = $this->_make_label();
+		return $this->label_prefix.$el.$this->label_suffix;
 	}
 
 	function text() 
@@ -1110,6 +1111,15 @@ class Form {
 		return $this;
 	}
 
+	function fieldset_close()
+	{
+		$info['type'] = 'fieldset_close';
+		$el = new El($info, $this->config);
+		$this->_add_element_to_form($el);
+		$this->fieldsets--;
+		return $this;
+	}
+
 	function hidden($nameid, $value='', $rules='')
 	{
 		$info = array();
@@ -1576,6 +1586,7 @@ class Form {
 		foreach ($this->_aliases as $old=>$new) 
 		{
 			$form[$new] = $form[$old];
+			$form[$new.'_label'] = $form[$old.'_label'];
 			$form[$new.'_error'] = $form[$old.'_error'];
 			unset($form[$old]);
 			unset($form[$old.'_error']);
@@ -2154,31 +2165,39 @@ class Form {
 						
 			if ($strip && $name)
 			{
-				$this->$element->label_text = '';
 				$this->$element->error = '';
 				
 				// checkgroups and radiogroups share the same 'name' attribute
 				if (isset($array[$name])) 
 				{
-					if (!is_array($array[$name]) )
+					if ( ! is_array($array[$name]))
 					{
 						$old = $array[$name];
 						$old_error = $array[$name.'_error'];
+						$old_label = $array[$name.'_label'];
 
 						unset($array[$name]);
 						unset($array[$name.'_error']);
+						unset($array[$name.'_label']);
 
 						$array[$name][] = $old;
 						$array[$name.'_error'][] = $old_error;
+						$array[$name.'_label'][] = $old_label;
 					}
 
+					$array[$name.'_error'][] = $this->$element->error_message;
+					$array[$name.'_label'][] = $this->$element->label_text;
+
+					$this->$element->label_text = '';
 					$array[$name][] = $this->$element->get();
-					$array[$name.'_error'][] = $this->$element->error_message;				
 				}
 				else
 				{
-					$array[$name] = $this->$element->get();
 					$array[$name.'_error'] = $this->$element->error_message;				
+					if (isset($this->$element->label_text)) $array[$name.'_label'] = $this->$element->label_text;
+
+					$this->$element->label_text = '';
+					$array[$name] = $this->$element->get();
 				}
 			}
 
